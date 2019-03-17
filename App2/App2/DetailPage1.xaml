@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="App2.DetailPage1">
+    <ContentPage.Content>
+        <ListView x:Name="listView"
+        HasUnevenRows="true">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <ViewCell>
+                        <StackLayout
+                        HorizontalOptions="FillAndExpand"
+                        Orientation="Horizontal">
+                            <StackLayout
+                            Orientation="Vertical">
+                                <Label Text="{Binding title}" FontSize="Medium"  BackgroundColor="DarkGray"/>
+                                <Label Text="{Binding detail}" BackgroundColor="White"/>
+                                <Label Text="{Binding time}" FontSize="Small" BackgroundColor="Yellow"/>
+                            </StackLayout>
+                        </StackLayout>
+                    </ViewCell>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </ContentPage.Content>
+</ContentPage>
