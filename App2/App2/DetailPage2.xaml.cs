@@ -20,7 +20,6 @@ namespace App2
                 Source = new UrlWebViewSource
                 {
                     Url = url,
-
                 },
             };
             

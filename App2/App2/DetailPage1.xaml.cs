@@ -18,7 +18,7 @@ namespace App2
 	{
         ObservableCollection<Data> menu_array = new ObservableCollection<Data>();//メニュー配列
         class Data
-        { // <-1
+        { //
             public String title { get; set; }
             public String detail { get; set; }
             public String time { get; set; }
@@ -32,10 +32,23 @@ namespace App2
             string path_feedurl;
             string path_newfeed;
 
-            //android/ios ファイルパス
             path = PCLStorage.FileSystem.Current.LocalStorage.Path;
 
-            var feed_txt=File.ReadAllLines(path + Regex.Replace(title, @"\.|""|\/|\[|\]|:|;|=", "") + ".txt");
+            var feed_txt = File.ReadAllLines(path + Regex.Replace(title, @"\.|""|\/|\[|\]|:|;|=", "") + ".txt");
+
+            ToolbarItem tItem1 = new ToolbarItem
+            {
+                Icon = "",
+                Text = title,
+                Priority = 1,
+                Order = ToolbarItemOrder.Primary,
+                Command = new Command(() =>
+                {
+                    Navigation.PushAsync(new DetailPage2(feed_txt[1]));
+                }),
+            };
+
+            this.ToolbarItems.Add(tItem1);
 
             List<FeedData> Feed_List = new List<FeedData>();
             FeedData hoo = new FeedData();

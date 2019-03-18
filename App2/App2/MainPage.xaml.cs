@@ -14,6 +14,23 @@ namespace App2
 {
     public partial class MainPage : ContentPage
     {
+        public struct FeedData
+        {
+            public string title;
+            public string link;
+            public string putdate;
+            public string desc;
+        }
+
+        bool IsLoad = false;//
+        bool IsAll = false;
+        Dictionary<string, string> feed_url_title = new Dictionary<string, string>();//menu のタイトルとUrl
+        ObservableCollection<String> menu_array = new ObservableCollection<String>();//mainpage メニュー配列
+        string path;
+        string path_feedurl;//FEEDURL保存txt
+        string path_newfeed;//新着FEED保存txt
+               
+        //コンストラクタ でイベント設定
         public MainPage()
         {
             InitializeComponent();
@@ -43,18 +60,38 @@ namespace App2
                     IsAll = false;
                     newfeed.IsEnabled = false;
                     allfeed.IsEnabled = true;
-                    if (feed_array!=null)
-                    {
-                        feed_array.Clear();
-                    }
                     File.Delete(path_feedurl);
                     File.Delete(path_newfeed);
                     Init();
                 }),
             };
-            //ツールバーとして設定します。
             this.ToolbarItems.Add(tItem1);
             this.ToolbarItems.Add(tItem2);
+
+            listView.ItemsSource = menu_array;
+            listView.ItemTapped += (sender, e) =>
+            {
+                Navigation.PushAsync(new DetailPage1((string)e.Item, feed_url_title[(string)e.Item], feed_url_title));
+            };
+
+            newfeed.Clicked += (sender, e) =>
+            {
+                IsAll = false;
+                newfeed.IsEnabled = false;
+                allfeed.IsEnabled = true;
+            };
+
+            allfeed.Clicked += (sender, e) =>
+            {
+                IsAll = true;
+                newfeed.IsEnabled = true;
+                allfeed.IsEnabled = false;
+            };
+
+            reloadfeed.Clicked += async (sender, e) =>
+            {
+                await ReloadFeed(menu_array);
+            };
         }
 
         async Task ReloadFeed(ObservableCollection<String> menu_array)
@@ -77,11 +114,15 @@ namespace App2
                     {
                         using (HttpClient httpClient = new HttpClient())
                         {
+                            List<FeedData> feed_array;
+
                             //feed取得
                             var html = await httpClient.GetStringAsync(item);
 
                             var title = Regex.Match(html, @"<title>.*?</title>").Value;
                             title = Regex.Replace(title, @"<title>|</title>|<!\[CDATA\[|\]\]>", "");
+                            var url = Regex.Match(html, @"<link>.*?</link>").Value;
+                            url = Regex.Replace(url, @"<link>|</link>|<!\[CDATA\[|\]\]>", "");
 
                             //rss2
                             var feed = Regex.Matches(html, @"<item>.*?</item>|<item .*?>.*?</item>", RegexOptions.Singleline);
@@ -105,7 +146,7 @@ namespace App2
                                 File.AppendAllText(path_newfeed, Regex.Replace(item, @"\r|\n", "") + "\r\n");//url newfeed
 
                                 title = Regex.Replace(title, @"\.|""|\/|\[|\]|:|;|=", "");
-                                File.WriteAllText(path + title + ".txt", feed_array[0].putdate + "\r\n\r\n");
+                                File.WriteAllText(path + title + ".txt", feed_array[0].putdate + "\r\n"+url+ "\r\n\r\n");
 
                                 for (int i = 0; i < feed_array.Count; i++)
                                 {
@@ -124,7 +165,7 @@ namespace App2
                                     File.AppendAllText(path_newfeed, Regex.Replace(item, @"\r|\n", "") + "\r\n");//url newfeed
 
                                     title = Regex.Replace(title, @"\.|""|\/|\[|\]|:|;|=", "");
-                                    File.WriteAllText(path + title + ".txt", feed_array[0].putdate + "\r\n\r\n");
+                                    File.WriteAllText(path + title + ".txt", feed_array[0].putdate + "\r\n" + url + "\r\n\r\n");
 
                                     for (int i = 0; i < feed_array.Count; i++)
                                     {
@@ -138,17 +179,17 @@ namespace App2
                                     var putdate = File.ReadAllLines(path + Regex.Replace(title, @"\.|""|\/|\[|\]|:|;|=", "") + ".txt");
                                     if (feed_array[0].putdate != putdate[0])//更新された
                                     {
-                                        feed_url_title.Add(title, item);
-                                        menu_array.Add(title);
                                         var feed_a=File.ReadAllLines(path_newfeed);
-                                        if (!feed_a.Contains(title))
+                                        if (!feed_a.Contains(title))//メニューにあるか確認
                                         {
                                             File.AppendAllText(path_newfeed, Regex.Replace(title, @"\r|\n", "") + "\r\n");//title newfeed
                                             File.AppendAllText(path_newfeed, Regex.Replace(item, @"\r|\n", "") + "\r\n");//url newfeed
+                                            feed_url_title.Add(title, item);
+                                            menu_array.Add(title);
                                         }
 
                                         title = Regex.Replace(title, @"\.|""|\/|\[|\]|:|;|=", "");
-                                        File.WriteAllText(path + title + ".txt", feed_array[0].putdate + "\r\n\r\n");
+                                        File.WriteAllText(path + title + ".txt", feed_array[0].putdate + "\r\n" + url + "\r\n\r\n");
 
                                         for (int i = 0; i < feed_array.Count; i++)
                                         {
@@ -286,7 +327,6 @@ namespace App2
                 return;
             }
             
-            //android/ios ファイルパス
             path = PCLStorage.FileSystem.Current.LocalStorage.Path;
             path_feedurl = path + "FeedUrl.txt";
             path_newfeed = path + "NewFeed.txt";
@@ -304,7 +344,10 @@ namespace App2
                     else
                     {
                         title = item;
-                        menu_array.Add(item);
+                        if (!menu_array.Contains(item))
+                        {
+                            menu_array.Add(item);
+                        }
                     }
                 }
             }
@@ -327,63 +370,15 @@ namespace App2
                 feedurl += "http://rss.itmedia.co.jp/rss/1.0/news_bursts.xml\r\n";
                 feedurl += "http://rss.itmedia.co.jp/rss/1.0/techtarget.xml\r\n";
                 feedurl += "http://jp.gamesindustry.biz/rss/index.xml\r\n";
-
-
-
+                
                 File.WriteAllText(path_feedurl, feedurl);
             }
         }
-
-        public struct FeedData
+               
+        //ページロード後イベント
+        async protected override void OnAppearing()
         {
-            public string title;
-            public string link;
-            public string putdate;
-            public string desc;
-        }
-
-        bool IsLoad = false;
-        bool IsAll = false;
-        List<FeedData> feed_array;
-        Dictionary<string,string> feed_url_title = new Dictionary<string,string>();
-        ObservableCollection<String> menu_array = new ObservableCollection<String>();//メニュー配列
-        string path;
-        string path_feedurl;
-        string path_newfeed;
-
-        async protected override void OnAppearing()//ページロード後イベント
-        {
-            if (IsLoad)
-            {
-                return;
-            }
             Init();
-
-            listView.ItemsSource = menu_array;
-            listView.ItemSelected += (sender, e) =>
-            {
-                Navigation.PushAsync(new DetailPage1((string)e.SelectedItem, feed_url_title[(string)e.SelectedItem], feed_url_title));
-            };
-
-            newfeed.Clicked += (sender, e) =>
-            {
-                IsAll = false;
-                newfeed.IsEnabled = false;
-                allfeed.IsEnabled = true;
-            };
-
-            allfeed.Clicked += (sender, e) =>
-            {
-                IsAll = true;
-                newfeed.IsEnabled = true;
-                allfeed.IsEnabled = false;
-            };
-
-            reloadfeed.Clicked += async (sender, e) => 
-            {
-                await ReloadFeed(menu_array);
-            };            
-
             IsLoad = true;
         }
 
